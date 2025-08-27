@@ -48,7 +48,7 @@ const userSchema = new Schema(
     },
     age: {
       type: Number,
-      min: 18,
+      min: 0,
     },
     photourl: {
       type: String,
@@ -66,9 +66,6 @@ const userSchema = new Schema(
     about: {
       type: String,
       default: "Hey there i am using devTinder",
-    },
-    skills: {
-      type: [String],
     },
     isPremium: {
       type: Boolean,

@@ -1,10 +1,12 @@
 const express = require("express");
+const multer = require("multer");
 
 const userRouter = express.Router();
 
 const { userAuth } = require("../middlewares/auth");
 const connectionRequest = require("../model/connectionRequest");
 const User = require("../model/user");
+const upload = require("../middlewares/upload");
 
 const USER_SAFE_DATA = [
   "firstName",
@@ -41,10 +43,12 @@ userRouter.get("/user/request/recieved", userAuth, async (req, res) => {
 userRouter.get("/user/request/sent", userAuth, async (req, res) => {
   try {
     const user = req.user;
-    const data = await connectionRequest.find({
-      fromUserId: user._id,
-      status: "interested",
-    }).populate("toUserId");
+    const data = await connectionRequest
+      .find({
+        fromUserId: user._id,
+        status: "interested",
+      })
+      .populate("toUserId");
 
     res.json({
       message: "Fetched successfully",
@@ -149,6 +153,68 @@ userRouter.get("/user/:userId", userAuth, async (req, res) => {
       message: "Something went wrong in /user/:userId",
     });
   }
+});
+
+userRouter.post(
+  "/user/upload",
+  userAuth,
+  upload.single("photo"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: "No file uploaded",
+        });
+      }
+
+      // Update user's photo URL in database
+      const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+          photourl: req.file.path, // Cloudinary URL
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      ).select(USER_SAFE_DATA);
+
+      res.json({
+        message: "Photo uploaded successfully!",
+        photoUrl: req.file.path,
+        public_id: req.file.filename,
+        user: updatedUser,
+      });
+    } catch (err) {
+      console.error("Photo upload error:", err);
+      res.status(500).json({
+        message: "Failed to upload photo",
+        error: err.message,
+      });
+    }
+  }
+);
+
+// Error handling middleware for multer
+userRouter.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        message: "File too large. Maximum size is 5MB",
+      });
+    }
+  }
+
+  if (error.message === "Only image files are allowed!") {
+    return res.status(400).json({
+      message: "Only image files are allowed",
+    });
+  }
+
+  res.status(500).json({
+    message: "Upload failed",
+    error: error.message,
+  });
 });
 
 module.exports = userRouter;
