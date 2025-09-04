@@ -74,7 +74,7 @@ const userSchema = new Schema(
     },
     planType: {
       type: String,
-      default: "basic",
+      default: "None",
     },
     planExpiry: {
       type: Date,
